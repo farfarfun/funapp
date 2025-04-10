@@ -1,6 +1,6 @@
 [project]
 name = "funapp"
-version = "1.1.1"
+version = "1.1.3"
 description = "funapp"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -28,3 +28,9 @@ Releases = "https://github.com/farfarfun/funapp/releases"
 
 [tool.setuptools]
 license-files = []
+
+[tool.uv]
+[[tool.uv.index]]
+name = "packages-pypi"
+url = "https://packages.aliyun.com/5fc5eb115dbd287006145e5f/pypi/funpy"
+
