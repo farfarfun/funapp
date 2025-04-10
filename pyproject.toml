@@ -1,16 +1,30 @@
-[build-system]
-requires = [ "poetry-core",]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry]
+[project]
 name = "funapp"
-version = "1.0.1"
-description = ""
-authors = [ "farfun <1007530194@qq.com>",]
+version = "1.1.1"
+description = "funapp"
 readme = "README.md"
-[[tool.poetry.packages]]
-from = "src"
-include = "*"
+requires-python = ">=3.8"
+dependencies = []
+[[project.authors]]
+name = "牛哥"
+email = "niuliangtao@qq.com"
 
-[tool.poetry.dependencies]
-python = "^3.9"
+[[project.authors]]
+name = "farfarfun"
+email = "farfarfun@qq.com"
+
+[[project.maintainers]]
+name = "牛哥"
+email = "niuliangtao@qq.com"
+
+[[project.maintainers]]
+name = "farfarfun"
+email = "farfarfun@qq.com"
+
+[project.urls]
+Organization = "https://github.com/farfarfun"
+Repository = "https://github.com/farfarfun/funapp"
+Releases = "https://github.com/farfarfun/funapp/releases"
+
+[tool.setuptools]
+license-files = []
