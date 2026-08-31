@@ -1,4 +1,12 @@
-from sqlalchemy import BigInteger, Column, DateTime, Integer, String, Text, create_engine
+from sqlalchemy import (
+    BigInteger,
+    Column,
+    DateTime,
+    Integer,
+    String,
+    Text,
+    create_engine,
+)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 
@@ -20,7 +28,11 @@ class User(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     created_at = Column(DateTime, server_default=func.current_timestamp())
-    updated_at = Column(DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+    updated_at = Column(
+        DateTime,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )
     status = Column(Integer, default=1)
     username = Column(String(50), unique=True)
     password = Column(String(100))
@@ -37,7 +49,11 @@ class Theme(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     created_at = Column(DateTime, server_default=func.current_timestamp())
-    updated_at = Column(DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+    updated_at = Column(
+        DateTime,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )
     status = Column(Integer, default=1)
     name = Column(String(50), unique=True)
     description = Column(Text)
@@ -55,7 +71,11 @@ class Game(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     created_at = Column(DateTime, server_default=func.current_timestamp())
-    updated_at = Column(DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+    updated_at = Column(
+        DateTime,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )
     status = Column(Integer, default=1)
     name = Column(String(100))
     game_type = Column(String(50), unique=True)
@@ -76,7 +96,11 @@ class Campaign(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     created_at = Column(DateTime, server_default=func.current_timestamp())
-    updated_at = Column(DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+    updated_at = Column(
+        DateTime,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )
     status = Column(Integer, default=1)
     name = Column(String(100), unique=True)
     description = Column(Text)
@@ -100,7 +124,11 @@ class Campaign(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     created_at = Column(DateTime, server_default=func.current_timestamp())
-    updated_at = Column(DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+    updated_at = Column(
+        DateTime,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )
     status = Column(Integer, default=1)
     name = Column(String(100), unique=True)
     description = Column(Text)
@@ -124,7 +152,11 @@ class GameInstance(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     created_at = Column(DateTime, server_default=func.current_timestamp())
-    updated_at = Column(DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+    updated_at = Column(
+        DateTime,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )
     status = Column(Integer, default=1)
     name = Column(String(100))
     diff_level = Column(Integer, default=4)
@@ -147,7 +179,11 @@ class CampaignLevel(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     created_at = Column(DateTime, server_default=func.current_timestamp())
-    updated_at = Column(DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+    updated_at = Column(
+        DateTime,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )
     status = Column(Integer, default=1)
     name = Column(String(100))
     campaign_id = Column(BigInteger, ForeignKey("t_campaign.id"))

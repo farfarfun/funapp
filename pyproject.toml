@@ -1,6 +1,6 @@
 [project]
 name = "funapp"
-version = "1.1.4"
+version = "1.1.5"
 description = "funapp"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -10,6 +10,8 @@ dependencies = [
     "nicegui",
     "funbuild",
 ]
+license = "MIT"
+license-files = ["LICENSE"]
 [[project.authors]]
 name = "牛哥"
 email = "niuliangtao@qq.com"
@@ -17,7 +19,6 @@ email = "niuliangtao@qq.com"
 [[project.authors]]
 name = "farfarfun"
 email = "farfarfun@qq.com"
-
 [[project.maintainers]]
 name = "牛哥"
 email = "niuliangtao@qq.com"
@@ -25,14 +26,12 @@ email = "niuliangtao@qq.com"
 [[project.maintainers]]
 name = "farfarfun"
 email = "farfarfun@qq.com"
-
 [project.urls]
 Organization = "https://github.com/farfarfun"
 Repository = "https://github.com/farfarfun/funapp"
 Releases = "https://github.com/farfarfun/funapp/releases"
 
 [tool.setuptools]
-license-files = []
 
 [build-system]
 requires = ["hatchling"]
@@ -42,9 +41,4 @@ build-backend = "hatchling.build"
 dev = [
     "pytest",
 ]
-
-[tool.uv]
-[[tool.uv.index]]
-name = "packages-pypi"
-url = "https://packages.aliyun.com/5fc5eb115dbd287006145e5f/pypi/funpy"
 
