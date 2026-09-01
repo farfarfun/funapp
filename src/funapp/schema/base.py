@@ -112,34 +112,6 @@ class Campaign(Base):
     theme = relationship("Theme")
 
 
-from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
-
-from .base import Base
-
-
-class Campaign(Base):
-    __tablename__ = "t_campaign"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    created_at = Column(DateTime, server_default=func.current_timestamp())
-    updated_at = Column(
-        DateTime,
-        server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp(),
-    )
-    status = Column(Integer, default=1)
-    name = Column(String(100), unique=True)
-    description = Column(Text)
-    start_time = Column(DateTime)
-    end_time = Column(DateTime)
-    theme_id = Column(BigInteger, ForeignKey("t_theme.id"))
-    max_level_count = Column(Integer, default=1)
-
-    theme = relationship("Theme")
-
-
 from sqlalchemy import JSON, BigInteger, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
