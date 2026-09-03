@@ -30,6 +30,20 @@ from funapp.schema import User, create_tables
 create_tables()
 ```
 
+## 服务启停
+
+长期运行的 nicegui 服务统一通过 `scripts/setup.sh` 启停：
+
+```bash
+scripts/setup.sh run dev      # 前台运行（开发，直接加载本仓库 src/ 源码）
+scripts/setup.sh start dev    # 后台运行（开发）
+scripts/setup.sh status       # 查看运行状态
+scripts/setup.sh stop dev     # 停止
+scripts/setup.sh start prod   # 后台运行（生产，要求已 pip/uv 安装正式发布包，不回退到源码）
+```
+
+---
+
 ## 关于 farfarfun
 
 [farfarfun](https://github.com/farfarfun) 是一个专注于实用工具库的开源组织，
