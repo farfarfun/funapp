@@ -1,25 +1,32 @@
+from funsecret import read_secret
 from sqlalchemy import (
+    JSON,
     BigInteger,
     Column,
     DateTime,
+    ForeignKey,
     Integer,
     String,
     Text,
     create_engine,
 )
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
-
-from .base import Base
 
 Base = declarative_base()
 
-# 创建数据库连接
-engine = create_engine("mysql+pymysql://username:password@localhost/dbname")
+# 数据库连接串通过 funsecret 下发，不硬编码真实凭据；未配置时回落到本地开发默认值
+_db_url = read_secret(
+    "funapp",
+    "mysql",
+    "url",
+    value="mysql+pymysql://username:password@localhost/dbname",
+)
+engine = create_engine(_db_url)
 
 
-# 创建所有表
 def create_tables():
+    """创建所有表。"""
     Base.metadata.create_all(engine)
 
 
@@ -60,12 +67,6 @@ class Theme(Base):
     icon_url = Column(String(255))
 
 
-from sqlalchemy import JSON, BigInteger, Column, DateTime, Integer, String, Text
-from sqlalchemy.sql import func
-
-from .base import Base
-
-
 class Game(Base):
     __tablename__ = "t_game"
 
@@ -82,13 +83,6 @@ class Game(Base):
     description = Column(Text)
     rules = Column(Text)
     default_config = Column(JSON)
-
-
-from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
-
-from .base import Base
 
 
 class Campaign(Base):
@@ -112,13 +106,6 @@ class Campaign(Base):
     theme = relationship("Theme")
 
 
-from sqlalchemy import JSON, BigInteger, Column, DateTime, ForeignKey, Integer, String
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
-
-from .base import Base
-
-
 class GameInstance(Base):
     __tablename__ = "t_game_instance"
 
@@ -137,13 +124,6 @@ class GameInstance(Base):
     time_limit = Column(Integer)
 
     game = relationship("Game")
-
-
-from sqlalchemy import JSON, BigInteger, Column, DateTime, ForeignKey, Integer, String
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
-
-from .base import Base
 
 
 class CampaignLevel(Base):

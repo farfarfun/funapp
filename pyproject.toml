@@ -5,10 +5,13 @@ description = "funapp"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "sqlalchemy",
-    "pymysql",
-    "nicegui",
-    "funbuild",
+    "sqlalchemy>=2.0.0",
+    "pymysql>=1.1.0",
+    "nicegui>=2.0.0",
+    "funbuild>=1.6.0",
+    "farlog>=1.1.0",
+    "funsecret>=1.4.0",
+    "funshell>=1.0.0",
 ]
 license = "MIT"
 license-files = ["LICENSE"]
