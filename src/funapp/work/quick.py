@@ -1,3 +1,6 @@
+import shlex
+from urllib.parse import quote
+
 from funshell import run_shell
 from nicegui import app
 
@@ -9,5 +12,10 @@ def quick_open_item(item_id: str = "173652387") -> None:
     参数：
         item_id: 商品 id，默认值为示例 id。
     """
-    cmd = f"open 'https://www.miaostreet.com/clmj/hybrid/miaojieWeex?pageName=goods-detail&wh_weex=true&itemId={item_id}' -a '/Applications/喵街.app'"
+    if not isinstance(item_id, str) or not item_id.strip():
+        raise ValueError("item_id 不能为空")
+    url = "https://www.miaostreet.com/clmj/hybrid/miaojieWeex?" + (
+        "pageName=goods-detail&wh_weex=true&itemId=" + quote(item_id, safe="")
+    )
+    cmd = f"open {shlex.quote(url)} -a {shlex.quote('/Applications/喵街.app')}"
     run_shell(cmd)

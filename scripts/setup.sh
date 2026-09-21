@@ -3,17 +3,27 @@ set -euo pipefail
 
 ROOT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 RUN_DIR="$ROOT_DIR/.run"
-PID_FILE="$RUN_DIR/funapp.pid"
-LOG_FILE="$RUN_DIR/funapp.log"
 PORT=5678
 
 usage() {
-    echo "用法: $0 {start|stop|restart|run|status} {dev|prod}" >&2
+    echo "用法: $0 {start|stop|restart|run} {dev|prod} | $0 status [dev|prod]" >&2
     exit 1
 }
 
+pid_file() { echo "$RUN_DIR/funapp-$1.pid"; }
+log_file() { echo "$RUN_DIR/funapp-$1.log"; }
+
 is_running() {
-    [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null
+    local env="$1" pid_path pid
+    pid_path=$(pid_file "$env")
+    [ -f "$pid_path" ] || return 1
+    pid=$(cat "$pid_path")
+    if kill -0 "$pid" 2>/dev/null; then
+        return 0
+    fi
+    echo "funapp[$env] 发现陈旧 PID 文件，已清理 (pid $pid)" >&2
+    rm -f "$pid_path"
+    return 1
 }
 
 check_prod_installed() {
@@ -43,42 +53,44 @@ PYEOF
 
 start_cmd() {
     local env="$1"
+    local -a cmd
     if [ "$env" = "prod" ]; then
         check_prod_installed
-        python3 -c "from funapp.server.core import run; run()"
+        cmd=(python3 -c "from funapp.server.core import run; run()")
     else
         # dev 模式强制优先加载本仓库 src/ 下的源码，避免被系统/全局环境里
         # 恰好装着的其它 funapp 版本掩盖，保证跑的就是本地改动。
-        (cd "$ROOT_DIR" && PYTHONPATH="$ROOT_DIR/src${PYTHONPATH:+:$PYTHONPATH}" python3 -c "from funapp.server.core import run; run()")
+        cd "$ROOT_DIR"
+        cmd=(env "PYTHONPATH=$ROOT_DIR/src${PYTHONPATH:+:$PYTHONPATH}" python3 -c "from funapp.server.core import run; run()")
     fi
+    exec "${cmd[@]}"
 }
 
 do_start() {
     local env="$1"
+    local pid_path log_path
+    pid_path=$(pid_file "$env")
+    log_path=$(log_file "$env")
     mkdir -p "$RUN_DIR"
-    if is_running; then
-        echo "funapp 已在运行 (pid $(cat "$PID_FILE"))" >&2
+    if is_running "$env"; then
+        echo "funapp[$env] 已在运行 (pid $(cat "$pid_path"))" >&2
         exit 1
     fi
-    # nohup 起的是一个全新的 bash 进程，不会继承当前 shell 里的变量/函数，
-    # 必须显式 export，否则子进程里 ROOT_DIR 为空，会悄悄回退到系统环境里
-    # 恰好装着的其它 funapp 版本，而不是我们期望的这份源码/正式包。
-    export ROOT_DIR
-    export -f start_cmd check_prod_installed
-    nohup bash -c "start_cmd '$env'" >"$LOG_FILE" 2>&1 &
-    echo $! > "$PID_FILE"
-    echo "funapp 已在后台启动 (env=$env, pid $(cat "$PID_FILE"), port $PORT)"
+    nohup "$0" run "$env" >"$log_path" 2>&1 &
+    echo $! > "$pid_path"
+    echo "funapp[$env] 已在后台启动 (pid $(cat "$pid_path"), port $PORT)"
 }
 
 do_stop() {
-    if ! is_running; then
-        echo "funapp 未在运行" >&2
-        rm -f "$PID_FILE"
+    local env="$1" pid_path
+    pid_path=$(pid_file "$env")
+    if ! is_running "$env"; then
+        echo "funapp[$env] 未在运行" >&2
         return
     fi
-    kill "$(cat "$PID_FILE")"
-    rm -f "$PID_FILE"
-    echo "funapp 已停止"
+    kill "$(cat "$pid_path")"
+    rm -f "$pid_path"
+    echo "funapp[$env] 已停止"
 }
 
 do_run() {
@@ -88,10 +100,12 @@ do_run() {
 }
 
 do_status() {
-    if is_running; then
-        echo "funapp 运行中 (pid $(cat "$PID_FILE"), port $PORT)"
+    local env="$1" pid_path
+    pid_path=$(pid_file "$env")
+    if is_running "$env"; then
+        echo "funapp[$env] 运行中 (pid $(cat "$pid_path"), port $PORT)"
     else
-        echo "funapp 未运行"
+        echo "funapp[$env] 未运行"
     fi
 }
 
@@ -119,7 +133,13 @@ case "$action" in
         do_run "$env"
         ;;
     status)
-        do_status
+        [ -z "$env" ] || [ "$env" = "dev" ] || [ "$env" = "prod" ] || usage
+        if [ -n "$env" ]; then
+            do_status "$env"
+        else
+            do_status dev
+            do_status prod
+        fi
         ;;
     *)
         usage

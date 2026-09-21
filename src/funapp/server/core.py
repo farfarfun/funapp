@@ -5,7 +5,7 @@ logger = getLogger(__name__)
 
 
 @app.get("/status.taobao")
-def check():
+def check() -> str:
     """健康检查端点，返回 success 表示服务存活。"""
     return "success"
 

@@ -587,7 +587,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -760,7 +760,6 @@ version = "1.1.5"
 source = { editable = "." }
 dependencies = [
     { name = "farlog" },
-    { name = "funbuild" },
     { name = "funsecret" },
     { name = "funshell" },
     { name = "nicegui" },
@@ -770,14 +769,14 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "funbuild" },
     { name = "pytest" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "farlog", specifier = ">=1.1.0" },
-    { name = "funbuild", specifier = ">=1.6.0" },
-    { name = "funsecret", specifier = ">=1.4.0" },
+    { name = "farlog", specifier = ">=1.1.7" },
+    { name = "funsecret", specifier = ">=1.4.84" },
     { name = "funshell", specifier = ">=1.0.0" },
     { name = "nicegui", specifier = ">=2.0.0" },
     { name = "pymysql", specifier = ">=1.1.0" },
@@ -785,7 +784,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pytest" }]
+dev = [
+    { name = "funbuild", specifier = ">=1.6.66" },
+    { name = "pytest" },
+]
 
 [[package]]
 name = "funbuild"

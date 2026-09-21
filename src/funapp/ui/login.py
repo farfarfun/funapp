@@ -1,6 +1,6 @@
 from nicegui import ui
 
-with ui.element().classes("flex justify-center items-center h-full w-full"):
+with ui.element().classes("flex justify-center items-center h-full w-full"):  # noqa: SIM117
     with ui.element().classes("grid gap-8 w-full"):
         with ui.element().classes(
             "bg-gradient-to-r from-blue-500 to-purple-500 rounded-3xl"
@@ -34,7 +34,7 @@ with ui.element().classes("flex justify-center items-center h-full w-full"):
                         "w-full p-3 mt-4 text-white bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg hover:scale-105 transition transform duration-300 shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     )
 
-                with ui.element().classes(
+                with ui.element().classes(  # noqa: SIM117
                     "flex flex-col mt-4 text-sm text-center dark:text-gray-300"
                 ):
                     with ui.row():

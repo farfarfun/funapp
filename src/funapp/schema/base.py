@@ -25,12 +25,14 @@ _db_url = read_secret(
 engine = create_engine(_db_url)
 
 
-def create_tables():
+def create_tables() -> None:
     """创建所有表。"""
     Base.metadata.create_all(engine)
 
 
 class User(Base):
+    """用户账户及其基本资料。"""
+
     __tablename__ = "t_user"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -52,6 +54,8 @@ class User(Base):
 
 
 class Theme(Base):
+    """活动主题及展示信息。"""
+
     __tablename__ = "t_theme"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -68,6 +72,8 @@ class Theme(Base):
 
 
 class Game(Base):
+    """游戏定义及默认配置。"""
+
     __tablename__ = "t_game"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -86,6 +92,8 @@ class Game(Base):
 
 
 class Campaign(Base):
+    """活动定义、时间范围和关联主题。"""
+
     __tablename__ = "t_campaign"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -107,6 +115,8 @@ class Campaign(Base):
 
 
 class GameInstance(Base):
+    """活动中实际运行的游戏实例。"""
+
     __tablename__ = "t_game_instance"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -127,6 +137,8 @@ class GameInstance(Base):
 
 
 class CampaignLevel(Base):
+    """活动关卡及其关联的游戏资源。"""
+
     __tablename__ = "t_campaign_level"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)

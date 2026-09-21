@@ -26,7 +26,7 @@ def test_import_funapp_server_package():
 
 
 def test_import_funapp_schema_package():
-    """funapp.schema 应当能正常导出六个模型类。"""
+    """funapp.schema 应当导出模型和建表入口。"""
     from funapp.schema import (
         Campaign,
         CampaignLevel,
@@ -34,10 +34,31 @@ def test_import_funapp_schema_package():
         GameInstance,
         Theme,
         User,
+        create_tables,
     )
 
     for model in (User, Theme, Game, Campaign, GameInstance, CampaignLevel):
         assert hasattr(model, "__tablename__")
+    assert callable(create_tables)
+
+
+def test_health_check():
+    """健康检查应返回固定成功值。"""
+    from funapp.server.core import check
+
+    assert check() == "success"
+
+
+def test_create_tables_uses_metadata(monkeypatch):
+    """建表入口应调用当前模型元数据。"""
+    from funapp.schema import base
+
+    called = []
+    monkeypatch.setattr(
+        base.Base.metadata, "create_all", lambda engine: called.append(engine)
+    )
+    base.create_tables()
+    assert called == [base.engine]
 
 
 def test_import_funapp_server_core():
@@ -52,6 +73,16 @@ def test_import_funapp_work_quick():
     from funapp.work.quick import quick_open_item
 
     assert callable(quick_open_item)
+
+
+def test_quick_open_item_rejects_empty_id():
+    """商品 id 为空时应在执行 shell 前拒绝。"""
+    import pytest
+
+    from funapp.work.quick import quick_open_item
+
+    with pytest.raises(ValueError):
+        quick_open_item("")
 
 
 def test_import_funapp_ui_login():
