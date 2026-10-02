@@ -27,24 +27,57 @@ is_running() {
 }
 
 check_prod_installed() {
-    # prod 只能跑已安装的正式包，不能回退到本仓库源码；
-    # 通过比对 funapp 包的实际加载路径是否落在本仓库目录内来判断。
+    # prod 只能跑已安装的正式包，不能回退到本仓库源码。
+    # 只做 `cd /tmp && python -c "import funapp"` 这种校验是不够的：
+    # `uv sync` 装的是 editable，`.pth` 会把源码目录重新塞回 sys.path，
+    # import 永远成功、校验形同虚设。这里断言 funapp 的真实加载路径
+    # 既不在本仓库目录下，又确实落在 site-packages 内。
     python3 - "$ROOT_DIR" <<'PYEOF'
 import os
+import site
 import sys
+import sysconfig
 
 root_dir = os.path.realpath(sys.argv[1])
 try:
     import funapp
 except ImportError:
-    print("error: 未安装 funapp 正式包，请先 pip install funapp（或 uv pip install funapp）", file=sys.stderr)
+    print(
+        "error: 未安装 funapp 正式包，请先 pip install funapp（或 uv pip install funapp）",
+        file=sys.stderr,
+    )
     sys.exit(1)
 
-pkg_path = os.path.realpath(funapp.__file__)
+pkg_file = getattr(funapp, "__file__", None)
+if not pkg_file:
+    print(
+        "error: funapp 被解析成了没有 __file__ 的命名空间包，说明正式包未安装",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+pkg_path = os.path.realpath(pkg_file)
 if pkg_path.startswith(root_dir + os.sep):
     print(
         "error: 当前 funapp 是从本仓库源码目录加载的（{}），".format(pkg_path)
-        + "prod 模式禁止直接跑源码，请先安装正式发布包",
+        + "prod 模式禁止直接跑源码（editable 安装同样算源码），请先安装正式发布包",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+candidates = [sysconfig.get_path("purelib"), sysconfig.get_path("platlib")]
+for getter in ("getsitepackages", "getusersitepackages"):
+    func = getattr(site, getter, None)
+    if func is None:
+        continue
+    found = func()
+    candidates.extend([found] if isinstance(found, str) else found)
+
+site_dirs = {os.path.realpath(path) for path in candidates if path}
+if not any(pkg_path.startswith(site_dir + os.sep) for site_dir in site_dirs):
+    print(
+        "error: funapp 的加载路径 {} 不在 site-packages 内，".format(pkg_path)
+        + "疑似 editable 安装或 PYTHONPATH 注入，prod 模式拒绝启动",
         file=sys.stderr,
     )
     sys.exit(1)
@@ -54,13 +87,21 @@ PYEOF
 start_cmd() {
     local env="$1"
     local -a cmd
+    # 统一在 .run/ 里启动：
+    # - 该目录只放运行时文件，不含任何 Python 模块，不会把要加载的包顶掉；
+    # - farlog 会在当前目录下建相对的 logs/，所以 CWD 必须可写（不能用 /）。
+    mkdir -p "$RUN_DIR"
+    cd "$RUN_DIR"
     if [ "$env" = "prod" ]; then
+        # prod 不接受 PYTHONPATH 注入：先清掉再校验，保证「校验的环境」和
+        # 「真正启动的环境」完全一致。校验下沉到这里，`run prod` 与
+        # `start prod` 两条路径都会经过。
+        unset PYTHONPATH
         check_prod_installed
         cmd=(python3 -c "from funapp.server.core import run; run()")
     else
         # dev 模式强制优先加载本仓库 src/ 下的源码，避免被系统/全局环境里
         # 恰好装着的其它 funapp 版本掩盖，保证跑的就是本地改动。
-        cd "$ROOT_DIR"
         cmd=(env "PYTHONPATH=$ROOT_DIR/src${PYTHONPATH:+:$PYTHONPATH}" python3 -c "from funapp.server.core import run; run()")
     fi
     exec "${cmd[@]}"

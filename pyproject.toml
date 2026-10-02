@@ -1,7 +1,7 @@
 [project]
 name = "funapp"
-version = "1.1.5"
-description = "funapp"
+version = "1.1.6"
+description = "基于 NiceGUI 的轻量 Web 服务：健康检查端点、游戏/活动 SQLAlchemy 数据模型，以及一键打开商品详情页等本地快捷入口"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -33,14 +33,19 @@ Organization = "https://github.com/farfarfun"
 Repository = "https://github.com/farfarfun/funapp"
 Releases = "https://github.com/farfarfun/funapp/releases"
 
-[tool.setuptools]
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/funapp"]
+
+[tool.ruff]
+target-version = "py310"
+
 [dependency-groups]
 dev = [
     "funbuild>=1.6.66",
-    "pytest",
+    "pytest>=7.0",
+    "ruff>=0.11.0",
 ]

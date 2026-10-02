@@ -1,3 +1,10 @@
+"""登录页面的静态布局原型。
+
+当前只有布局：输入框、链接和按钮都**没有绑定任何回调**，也没有接入认证逻辑，
+`funapp.server.core.run()` 不会导入或挂载本模块。想预览这个页面时手动
+`import funapp.ui.login`；真正可用的登录流程仍待实现。
+"""
+
 from nicegui import ui
 
 with ui.element().classes("flex justify-center items-center h-full w-full"):  # noqa: SIM117

@@ -24,6 +24,11 @@ _db_url = read_secret(
 )
 engine = create_engine(_db_url)
 
+# SQLite 只把 `INTEGER PRIMARY KEY` 当自增列，声明成 BIGINT 时自增不生效、
+# 插入会撞上 `NOT NULL constraint failed`。默认连接串是本地 SQLite，所以主键
+# 在 SQLite 上降级为 INTEGER，其余方言（MySQL 等）仍按 BIGINT 建表。
+_PK_TYPE = BigInteger().with_variant(Integer, "sqlite")
+
 
 def create_tables() -> None:
     """创建所有表。"""
@@ -35,7 +40,7 @@ class User(Base):
 
     __tablename__ = "t_user"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(_PK_TYPE, primary_key=True, autoincrement=True)
     created_at = Column(DateTime, server_default=func.current_timestamp())
     updated_at = Column(
         DateTime,
@@ -58,7 +63,7 @@ class Theme(Base):
 
     __tablename__ = "t_theme"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(_PK_TYPE, primary_key=True, autoincrement=True)
     created_at = Column(DateTime, server_default=func.current_timestamp())
     updated_at = Column(
         DateTime,
@@ -76,7 +81,7 @@ class Game(Base):
 
     __tablename__ = "t_game"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(_PK_TYPE, primary_key=True, autoincrement=True)
     created_at = Column(DateTime, server_default=func.current_timestamp())
     updated_at = Column(
         DateTime,
@@ -96,7 +101,7 @@ class Campaign(Base):
 
     __tablename__ = "t_campaign"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(_PK_TYPE, primary_key=True, autoincrement=True)
     created_at = Column(DateTime, server_default=func.current_timestamp())
     updated_at = Column(
         DateTime,
@@ -119,7 +124,7 @@ class GameInstance(Base):
 
     __tablename__ = "t_game_instance"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(_PK_TYPE, primary_key=True, autoincrement=True)
     created_at = Column(DateTime, server_default=func.current_timestamp())
     updated_at = Column(
         DateTime,
@@ -141,7 +146,7 @@ class CampaignLevel(Base):
 
     __tablename__ = "t_campaign_level"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(_PK_TYPE, primary_key=True, autoincrement=True)
     created_at = Column(DateTime, server_default=func.current_timestamp())
     updated_at = Column(
         DateTime,
