@@ -15,12 +15,12 @@ from sqlalchemy.sql import func
 
 Base = declarative_base()
 
-# 数据库连接串通过 funsecret 下发，不硬编码真实凭据；未配置时回落到本地开发默认值
+# 数据库连接串通过 funsecret 下发；未配置时使用不含凭据的本地 SQLite 数据库
 _db_url = read_secret(
     "funapp",
     "mysql",
     "url",
-    value="mysql+pymysql://username:password@localhost/dbname",
+    value="sqlite:///funapp.db",
 )
 engine = create_engine(_db_url)
 

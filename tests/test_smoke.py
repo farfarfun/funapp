@@ -6,6 +6,11 @@
 """
 
 import importlib
+import inspect
+import os
+import shlex
+import subprocess
+from pathlib import Path
 
 
 def test_import_funapp_top_level():
@@ -61,11 +66,31 @@ def test_create_tables_uses_metadata(monkeypatch):
     assert called == [base.engine]
 
 
+def test_default_database_url_contains_no_credentials():
+    """未配置密钥时应使用不含凭据的本地数据库。"""
+    from funapp.schema import base
+
+    assert base.engine.url.drivername == "sqlite"
+    assert base.engine.url.username is None
+    assert base.engine.url.password is None
+
+
 def test_import_funapp_server_core():
     """funapp.server.core 应当能正常导入并暴露 run()。"""
     from funapp.server.core import run
 
     assert callable(run)
+    assert not inspect.signature(run).parameters
+
+
+def test_run_starts_nicegui_with_expected_settings(monkeypatch):
+    """服务入口应使用固定的非交互配置启动 NiceGUI。"""
+    from funapp.server import core
+
+    calls = []
+    monkeypatch.setattr(core.ui, "run", lambda **kwargs: calls.append(kwargs))
+    core.run()
+    assert calls == [{"show": False, "reload": False, "port": 5678}]
 
 
 def test_import_funapp_work_quick():
@@ -83,6 +108,59 @@ def test_quick_open_item_rejects_empty_id():
 
     with pytest.raises(ValueError):
         quick_open_item("")
+
+
+def test_quick_open_item_opens_encoded_url(monkeypatch):
+    """有效商品 id 应被编码后传给喵街客户端。"""
+    from funapp.work import quick
+
+    calls = []
+    monkeypatch.setattr(quick, "run_shell", calls.append)
+    quick.quick_open_item("item / 1")
+
+    url = (
+        "https://www.miaostreet.com/clmj/hybrid/miaojieWeex?"
+        "pageName=goods-detail&wh_weex=true&itemId=item%20%2F%201"
+    )
+    assert calls == [f"open {shlex.quote(url)} -a {shlex.quote('/Applications/喵街.app')}"]
+
+
+def test_service_script_lifecycle(tmp_path, monkeypatch):
+    """run/start/restart/stop 应按指定环境完成前后台生命周期。"""
+    source = Path(__file__).parents[1] / "scripts" / "setup.sh"
+    script = tmp_path / "scripts" / "setup.sh"
+    script.parent.mkdir()
+    script.write_bytes(source.read_bytes())
+    script.chmod(0o755)
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_python = bin_dir / "python3"
+    fake_python.write_text(
+        "#!/bin/bash\n[[ -n ${FAKE_FOREGROUND:-} ]] && exit 0\nexec sleep 30\n"
+    )
+    fake_python.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}:{Path('/usr/bin')}:{Path('/bin')}")
+
+    foreground_env = {**os.environ, "FAKE_FOREGROUND": "1"}
+    subprocess.run(
+        [str(script), "run", "dev"], env=foreground_env, check=True, timeout=5
+    )
+    started = subprocess.run(
+        [str(script), "start", "dev"], check=True, capture_output=True, text=True
+    )
+    assert "funapp[dev] 已在后台启动" in started.stdout
+
+    restarted = subprocess.run(
+        [str(script), "restart", "dev"], check=True, capture_output=True, text=True
+    )
+    assert "funapp[dev] 已停止" in restarted.stdout
+    assert "funapp[dev] 已在后台启动" in restarted.stdout
+
+    stopped = subprocess.run(
+        [str(script), "stop", "dev"], check=True, capture_output=True, text=True
+    )
+    assert "funapp[dev] 已停止" in stopped.stdout
 
 
 def test_import_funapp_ui_login():

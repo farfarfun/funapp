@@ -10,6 +10,6 @@ def check() -> str:
     return "success"
 
 
-def run(*args, **kwargs) -> None:
+def run() -> None:
     """启动 funapp 的 nicegui 服务。"""
     ui.run(show=False, reload=False, port=5678)

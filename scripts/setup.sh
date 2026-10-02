@@ -123,10 +123,10 @@ case "$action" in
         do_start "$env"
         ;;
     stop)
-        do_stop
+        do_stop "$env"
         ;;
     restart)
-        do_stop || true
+        do_stop "$env" || true
         do_start "$env"
         ;;
     run)
