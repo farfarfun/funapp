@@ -90,42 +90,6 @@ CREATE TABLE t_campaign_level (
     UNIQUE KEY UK_campaign_level_number (campaign_id, level_number)
 ) COMMENT '活动关卡表：定义活动中的各个游戏关卡';
 
--- 最终层依赖：依赖于所有前面的表
-CREATE TABLE t_user_game_record (
-    id              BIGINT       NULL AUTO_INCREMENT COMMENT '主键ID，自增长',
-    created_at      TIMESTAMP    NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
-    updated_at      TIMESTAMP    NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '记录更新时间',
-    status          INT          NULL DEFAULT 1 COMMENT '状态：1-下架，2-在架，3-删除，4-过期',
-    user_id         BIGINT       NOT NULL COMMENT '用户ID，标识游戏参与者',
-    game_id         BIGINT       NULL COMMENT '游戏ID，对应t_game表',
-    game_instance_id BIGINT      NOT NULL COMMENT '游戏实例ID，关联t_game_instance表',
-    theme_id        BIGINT       NULL COMMENT '主题ID，对应t_theme表',
-    campaign_id     BIGINT       NULL COMMENT '活动ID，对应t_campaign表',
-    campaign_level_id BIGINT     NULL COMMENT '活动关卡ID，为空表示非活动游戏',
-    score           INT          NULL COMMENT '用户获得的游戏分数',
-    start_time      TIMESTAMP    NULL COMMENT '闯关开始时间',
-    completed_at    TIMESTAMP    NULL COMMENT '游戏完成时间戳',
-    is_success      BOOLEAN      NULL DEFAULT FALSE COMMENT '是否闯关成功：true-成功，false-失败',
-    PRIMARY KEY (id)
-) COMMENT '用户游戏记录表：记录用户参与游戏的成绩数据';
-
--- 用户活动闯关进度表：依赖于用户表和活动表
-CREATE TABLE t_user_campaign_progress (
-    id                  BIGINT       NULL AUTO_INCREMENT COMMENT '主键ID，自增长',
-    created_at          TIMESTAMP    NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
-    updated_at          TIMESTAMP    NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '记录更新时间',
-    status              INT          NULL DEFAULT 1 COMMENT '状态：1-下架，2-在架，3-删除，4-过期',
-    user_id             BIGINT       NOT NULL COMMENT '用户ID，对应t_user表',
-    campaign_id         BIGINT       NOT NULL COMMENT '活动ID，对应t_campaign表',
-    theme_id            BIGINT       NULL COMMENT '主题ID，对应t_theme表',
-    current_level_num   INT          NULL DEFAULT 1 COMMENT '当前关卡序号',
-    is_completed        BOOLEAN      NULL DEFAULT FALSE COMMENT '是否完成全部关卡：true-已完成，false-未完成',
-    completed_at        TIMESTAMP    NULL COMMENT '活动完成时间',
-    last_play_time      TIMESTAMP    NULL COMMENT '最后一次游玩时间',
-    PRIMARY KEY (id),
-    UNIQUE KEY UK_user_campaign (user_id, campaign_id)
-) COMMENT '用户活动进度表：记录用户在每个活动中的闯关进度';
-
 -- 添加外键约束
 ALTER TABLE t_campaign
     ADD CONSTRAINT FK_theme_TO_campaign
@@ -146,31 +110,6 @@ ALTER TABLE t_campaign_level
     ADD CONSTRAINT FK_game_instance_TO_campaign_level
     FOREIGN KEY (game_instance_id)
     REFERENCES t_game_instance (id);
-
-ALTER TABLE t_user_game_record
-    ADD CONSTRAINT FK_user_TO_user_game_record
-    FOREIGN KEY (user_id)
-    REFERENCES t_user (id);
-
-ALTER TABLE t_user_game_record
-    ADD CONSTRAINT FK_game_instance_TO_user_game_record
-    FOREIGN KEY (game_instance_id)
-    REFERENCES t_game_instance (id);
-
-ALTER TABLE t_user_game_record
-    ADD CONSTRAINT FK_campaign_level_TO_user_game_record
-    FOREIGN KEY (campaign_level_id)
-    REFERENCES t_campaign_level (id);
-
-ALTER TABLE t_user_campaign_progress
-    ADD CONSTRAINT FK_user_TO_user_campaign_progress
-    FOREIGN KEY (user_id)
-    REFERENCES t_user (id);
-
-ALTER TABLE t_user_campaign_progress
-    ADD CONSTRAINT FK_campaign_TO_user_campaign_progress
-    FOREIGN KEY (campaign_id)
-    REFERENCES t_campaign (id);
 
 -- 添加索引
 CREATE INDEX idx_user_username ON t_user (username ASC);
@@ -197,18 +136,3 @@ CREATE INDEX idx_camp_level_game ON t_campaign_level (game_instance_id ASC);
 CREATE INDEX idx_camp_level_status ON t_campaign_level (status ASC);
 CREATE INDEX idx_camp_level_number ON t_campaign_level (level_number ASC);
 CREATE INDEX idx_camp_level_game_id ON t_campaign_level (game_id ASC);
-
-CREATE INDEX idx_game_record_user ON t_user_game_record (user_id ASC);
-CREATE INDEX idx_game_record_instance ON t_user_game_record (game_instance_id ASC);
-CREATE INDEX idx_game_record_level ON t_user_game_record (campaign_level_id ASC);
-CREATE INDEX idx_game_record_score ON t_user_game_record (score DESC);
-CREATE INDEX idx_game_record_completed ON t_user_game_record (completed_at ASC);
-CREATE INDEX idx_game_record_game ON t_user_game_record (game_id ASC);
-CREATE INDEX idx_game_record_theme ON t_user_game_record (theme_id ASC);
-CREATE INDEX idx_game_record_campaign ON t_user_game_record (campaign_id ASC);
-
-CREATE INDEX idx_user_progress_user ON t_user_campaign_progress (user_id ASC);
-CREATE INDEX idx_user_progress_campaign ON t_user_campaign_progress (campaign_id ASC);
-CREATE INDEX idx_user_progress_level ON t_user_campaign_progress (current_level_num ASC);
-CREATE INDEX idx_user_progress_completed ON t_user_campaign_progress (is_completed ASC);
-CREATE INDEX idx_user_progress_theme ON t_user_campaign_progress (theme_id ASC);
