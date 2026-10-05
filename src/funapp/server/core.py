@@ -1,6 +1,9 @@
 from farlog import getLogger
 from nicegui import app, ui
 
+# Importing the route module registers the documented local-work endpoint.
+from funapp.work import quick  # noqa: F401
+
 logger = getLogger(__name__)
 
 

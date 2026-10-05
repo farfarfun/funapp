@@ -213,6 +213,30 @@ def test_service_script_lifecycle(tmp_path, monkeypatch):
     assert "funapp[dev] 已停止" in stopped.stdout
 
 
+def test_service_script_does_not_stop_reused_pid(tmp_path):
+    """PID 文件与当前进程启动时间不一致时，不得向该进程发送信号。"""
+    script = _copy_setup_script(tmp_path)
+    process = subprocess.Popen(["sleep", "30"])
+    pid_file = tmp_path / ".run" / "funapp-dev.pid"
+    pid_file.parent.mkdir()
+    pid_file.write_text(f"{process.pid} stale-start-time\\n")
+
+    try:
+        result = subprocess.run(
+            [str(script), "stop", "dev"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert "funapp[dev] 未在运行" in result.stderr
+        assert process.poll() is None
+        assert not pid_file.exists()
+    finally:
+        process.terminate()
+        process.wait(timeout=10)
+
+
 def test_service_script_rejects_missing_env():
     """start/stop/restart/run 缺少 dev|prod 参数时必须直接报用法并失败。"""
     script = REPO_ROOT / "scripts" / "setup.sh"
@@ -393,12 +417,19 @@ def test_http_routes_registered():
     """健康检查与快捷入口都应注册到 nicegui 的 FastAPI 应用上。"""
     from nicegui import app
 
-    import funapp.server.core
-    import funapp.work.quick  # noqa: F401
+    import funapp.server.core  # noqa: F401
 
     paths = {route.path for route in app.routes if hasattr(route, "path")}
     assert "/status.taobao" in paths
     assert "/work/item" in paths
+
+
+def test_sql_schema_only_describes_implemented_models():
+    """附带的 MySQL schema 不得包含没有对应 ORM 模型的表。"""
+    schema = (REPO_ROOT / "src/funapp/schema/schema.sql").read_text()
+
+    assert "t_user_game_record" not in schema
+    assert "t_user_campaign_progress" not in schema
 
 
 def test_import_funapp_ui_package():

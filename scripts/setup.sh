@@ -13,15 +13,32 @@ usage() {
 pid_file() { echo "$RUN_DIR/funapp-$1.pid"; }
 log_file() { echo "$RUN_DIR/funapp-$1.log"; }
 
+process_started_at() {
+    # Linux 的 /proc 启动 tick 可区分同一秒内的 PID 复用；其他系统回退到 ps。
+    if [ -r "/proc/$1/stat" ]; then
+        awk '{print $22}' "/proc/$1/stat"
+    else
+        ps -p "$1" -o lstart= 2>/dev/null | xargs
+    fi
+}
+
 is_running() {
-    local env="$1" pid_path pid
+    local env="$1" pid_path pid started_at actual_started_at
     pid_path=$(pid_file "$env")
     [ -f "$pid_path" ] || return 1
-    pid=$(cat "$pid_path")
-    if kill -0 "$pid" 2>/dev/null; then
-        return 0
+    read -r pid started_at < "$pid_path"
+    if [[ "$pid" =~ ^[1-9][0-9]*$ ]] && [ -n "$started_at" ] \
+        && kill -0 "$pid" 2>/dev/null; then
+        actual_started_at=$(process_started_at "$pid")
+        if [ "$actual_started_at" = "$started_at" ]; then
+            return 0
+        fi
     fi
-    echo "funapp[$env] 发现陈旧 PID 文件，已清理 (pid $pid)" >&2
+    if [ -n "${pid:-}" ]; then
+        echo "funapp[$env] 发现陈旧 PID 文件，已清理 (pid $pid)" >&2
+    else
+        echo "funapp[$env] 发现无效 PID 文件，已清理" >&2
+    fi
     rm -f "$pid_path"
     return 1
 }
@@ -118,8 +135,15 @@ do_start() {
         exit 1
     fi
     nohup "$0" run "$env" >"$log_path" 2>&1 &
-    echo $! > "$pid_path"
-    echo "funapp[$env] 已在后台启动 (pid $(cat "$pid_path"), port $PORT)"
+    local pid=$!
+    local started_at
+    started_at=$(process_started_at "$pid")
+    if [ -z "$started_at" ]; then
+        echo "funapp[$env] 无法读取启动进程信息" >&2
+        return 1
+    fi
+    printf '%s %s\n' "$pid" "$started_at" > "$pid_path"
+    echo "funapp[$env] 已在后台启动 (pid $pid, port $PORT)"
 }
 
 do_stop() {
@@ -129,7 +153,9 @@ do_stop() {
         echo "funapp[$env] 未在运行" >&2
         return
     fi
-    kill "$(cat "$pid_path")"
+    local pid
+    read -r pid _ < "$pid_path"
+    kill "$pid"
     rm -f "$pid_path"
     echo "funapp[$env] 已停止"
 }
@@ -144,7 +170,9 @@ do_status() {
     local env="$1" pid_path
     pid_path=$(pid_file "$env")
     if is_running "$env"; then
-        echo "funapp[$env] 运行中 (pid $(cat "$pid_path"), port $PORT)"
+        local pid
+        read -r pid _ < "$pid_path"
+        echo "funapp[$env] 运行中 (pid $pid, port $PORT)"
     else
         echo "funapp[$env] 未运行"
     fi
