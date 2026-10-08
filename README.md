@@ -44,15 +44,18 @@ create_tables()
 长期运行的 nicegui 服务统一通过 `scripts/setup.sh` 启停：
 
 ```bash
-scripts/setup.sh run dev      # 前台运行（开发，直接加载本仓库 src/ 源码）
-scripts/setup.sh start dev    # 后台运行（开发）
-scripts/setup.sh status       # 查看运行状态
-scripts/setup.sh stop dev     # 停止
-scripts/setup.sh start prod   # 后台运行（生产，要求已 pip/uv 安装正式发布包，不回退到源码）
+scripts/setup.sh install-dev           # 构建并安装当前源码
+scripts/setup.sh install-prod [版本]   # 从正式源安装最新或指定版本
+scripts/setup.sh run                   # 前台运行已安装版本
+scripts/setup.sh start                 # 后台运行已安装版本
+scripts/setup.sh status                # 查看运行状态和已安装版本
+scripts/setup.sh stop                  # 停止
+scripts/setup.sh restart               # 重启
+scripts/setup.sh publish               # 通过 funbuild 发布正式包
 ```
 
-PID 与日志统一放在 `.run/`。`prod` 会断言 `funapp` 的实际加载路径落在
-`site-packages` 内，editable 安装或 `PYTHONPATH` 注入都会直接报错退出。
+PID 与日志统一放在 `.run/`。安装阶段决定使用本地开发包还是正式包；运行命令不接受
+`dev` / `prod` 参数，只调用当前环境中已安装的 `funapp` CLI，不会回退到仓库源码。
 
 ---
 

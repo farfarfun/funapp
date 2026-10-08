@@ -6,8 +6,7 @@
 - ``funapp.work.quick.quick_open_item`` 的正常路径（URL 编码 + shell 命令构造）与
   非法入参边界。
 - ``funapp.schema`` 的模型建表、默认值、外键关系与唯一约束（跑在临时 SQLite 上）。
-- ``scripts/setup.sh`` 的 dev 前后台生命周期，以及 prod 只认 site-packages 内
-  正式包、拒绝源码/editable 的行为。
+- ``scripts/setup.sh`` 的无环境参数生命周期、安装动作和只运行已安装 CLI 的行为。
 """
 
 import importlib
@@ -15,8 +14,6 @@ import inspect
 import os
 import shlex
 import subprocess
-import sys
-import sysconfig
 from pathlib import Path
 
 import pytest
@@ -180,56 +177,77 @@ def test_quick_open_item_opens_encoded_url(monkeypatch):
 
 
 def test_service_script_lifecycle(tmp_path, monkeypatch):
-    """run/start/restart/stop 应按指定环境完成前后台生命周期。"""
+    """run/start/restart/status/stop 应操作当前已安装的唯一版本。"""
     script = _copy_setup_script(tmp_path)
 
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
-    fake_python = bin_dir / "python3"
-    fake_python.write_text(
-        "#!/bin/bash\n[[ -n ${FAKE_FOREGROUND:-} ]] && exit 0\nexec sleep 30\n"
+    fake_cli = bin_dir / "funapp"
+    fake_cli.write_text(
+        "#!/bin/bash\n"
+        "if [[ -n ${FUNAPP_FOREGROUND:-} ]]; then\n"
+        '  echo "installed-cli-called:${PYTHONPATH-unset}"\n'
+        "  exit 0\n"
+        "fi\n"
+        "exec sleep 30\n"
     )
-    fake_python.chmod(0o755)
+    fake_cli.chmod(0o755)
     monkeypatch.setenv("PATH", f"{bin_dir}:{Path('/usr/bin')}:{Path('/bin')}")
 
-    foreground_env = {**os.environ, "FAKE_FOREGROUND": "1"}
-    subprocess.run(
-        [str(script), "run", "dev"], env=foreground_env, check=True, timeout=5
+    foreground_env = {
+        **os.environ,
+        "FUNAPP_FOREGROUND": "1",
+        "PYTHONPATH": str(tmp_path / "src"),
+    }
+    foreground = subprocess.run(
+        [str(script), "run"],
+        env=foreground_env,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=5,
     )
+    assert foreground.stdout.strip() == "installed-cli-called:unset"
+
     started = subprocess.run(
-        [str(script), "start", "dev"], check=True, capture_output=True, text=True
+        [str(script), "start"], check=True, capture_output=True, text=True
     )
-    assert "funapp[dev] 已在后台启动" in started.stdout
+    assert "funapp 已在后台启动" in started.stdout
+
+    status = subprocess.run(
+        [str(script), "status"], check=True, capture_output=True, text=True
+    )
+    assert "运行中" in status.stdout
 
     restarted = subprocess.run(
-        [str(script), "restart", "dev"], check=True, capture_output=True, text=True
+        [str(script), "restart"], check=True, capture_output=True, text=True
     )
-    assert "funapp[dev] 已停止" in restarted.stdout
-    assert "funapp[dev] 已在后台启动" in restarted.stdout
+    assert "funapp 已停止" in restarted.stdout
+    assert "funapp 已在后台启动" in restarted.stdout
 
     stopped = subprocess.run(
-        [str(script), "stop", "dev"], check=True, capture_output=True, text=True
+        [str(script), "stop"], check=True, capture_output=True, text=True
     )
-    assert "funapp[dev] 已停止" in stopped.stdout
+    assert "funapp 已停止" in stopped.stdout
 
 
 def test_service_script_does_not_stop_reused_pid(tmp_path):
     """PID 文件与当前进程启动时间不一致时，不得向该进程发送信号。"""
     script = _copy_setup_script(tmp_path)
     process = subprocess.Popen(["sleep", "30"])
-    pid_file = tmp_path / ".run" / "funapp-dev.pid"
+    pid_file = tmp_path / ".run" / "funapp.pid"
     pid_file.parent.mkdir()
     pid_file.write_text(f"{process.pid} stale-start-time\\n")
 
     try:
         result = subprocess.run(
-            [str(script), "stop", "dev"],
+            [str(script), "stop"],
             check=True,
             capture_output=True,
             text=True,
             timeout=10,
         )
-        assert "funapp[dev] 未在运行" in result.stderr
+        assert "funapp 未在运行" in result.stderr
         assert process.poll() is None
         assert not pid_file.exists()
     finally:
@@ -237,12 +255,12 @@ def test_service_script_does_not_stop_reused_pid(tmp_path):
         process.wait(timeout=10)
 
 
-def test_service_script_rejects_missing_env():
-    """start/stop/restart/run 缺少 dev|prod 参数时必须直接报用法并失败。"""
+def test_service_script_rejects_runtime_environment_argument():
+    """生命周期只操作已安装版本，不再接受 dev|prod 参数。"""
     script = REPO_ROOT / "scripts" / "setup.sh"
-    for action in ("start", "stop", "restart", "run"):
+    for action in ("start", "stop", "restart", "run", "status"):
         result = subprocess.run(
-            [str(script), action],
+            [str(script), action, "dev"],
             check=False,
             capture_output=True,
             text=True,
@@ -252,114 +270,51 @@ def test_service_script_rejects_missing_env():
         assert "用法" in result.stderr, action
 
 
-def _require_editable_dev_install() -> None:
-    """确认当前解释器里的 funapp 就是本仓库源码（`uv run` / `uv sync` 的 editable）。
-
-    下面两个 prod 测试依赖这一点：它们要验证的恰恰是「editable 装着也不许当
-    正式包跑」，而不是靠 PYTHONPATH 伪造一个场景。
-    """
-    import funapp
-
-    pkg = Path(funapp.__file__).resolve()
-    assert pkg.is_relative_to((REPO_ROOT / "src").resolve()), (
-        f"本测试需要在本仓库的 editable 开发环境里运行（uv run pytest），当前 funapp 在 {pkg}"
-    )
-
-
-def test_service_script_prod_rejects_editable_install(tmp_path, monkeypatch):
-    """prod 不能接受 editable 安装：加载路径不在 site-packages 内就必须拒绝。
-
-    editable 安装会把源码目录重新塞回 ``sys.path``，所以
-    ``cd /tmp && python -c "import funapp"`` 这种校验永远会通过——这里断言脚本
-    不会被它骗过去。脚本放在隔离的 ROOT_DIR 下，绕开「加载路径在仓库目录内」
-    那条更早的分支，专门压 site-packages 断言。
-    """
-    _require_editable_dev_install()
+def test_service_script_requires_installed_cli(tmp_path, monkeypatch):
+    """run 缺少已安装 CLI 时应失败，不能回退到仓库源码。"""
     script = _copy_setup_script(tmp_path)
-    monkeypatch.setenv("PATH", f"{Path(sys.executable).parent}:/usr/bin:/bin")
-    monkeypatch.delenv("PYTHONPATH", raising=False)
+    monkeypatch.setenv("PATH", "/usr/bin:/bin")
 
     result = subprocess.run(
-        [str(script), "run", "prod"],
+        [str(script), "run"],
         check=False,
         capture_output=True,
         text=True,
-        timeout=60,
+        timeout=10,
     )
     assert result.returncode != 0
-    assert "site-packages" in result.stderr
-    assert not (tmp_path / ".run" / "funapp-prod.pid").exists()
+    assert "未安装 funapp" in result.stderr
 
 
-def test_service_script_prod_rejects_repo_source_tree(monkeypatch):
-    """用本仓库真实的脚本跑 prod：funapp 落在仓库目录内时必须明确报错。"""
-    _require_editable_dev_install()
-    script = REPO_ROOT / "scripts" / "setup.sh"
-    monkeypatch.setenv("PATH", f"{Path(sys.executable).parent}:/usr/bin:/bin")
-    monkeypatch.delenv("PYTHONPATH", raising=False)
+def test_service_script_install_actions(tmp_path, monkeypatch):
+    """开发安装/发布走 funbuild，生产安装只从包索引取指定版本。"""
+    script = _copy_setup_script(tmp_path)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    trace = tmp_path / "trace"
+    fake_funbuild = bin_dir / "funbuild"
+    fake_funbuild.write_text('#!/bin/bash\necho "funbuild:$PWD:$*" >> "$TRACE"\n')
+    fake_funbuild.chmod(0o755)
+    fake_python = bin_dir / "python3"
+    fake_python.write_text('#!/bin/bash\necho "python:$*" >> "$TRACE"\n')
+    fake_python.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}:/usr/bin:/bin")
+    monkeypatch.setenv("TRACE", str(trace))
 
-    result = subprocess.run(
-        [str(script), "run", "prod"],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-    assert result.returncode != 0
-    assert "本仓库源码目录" in result.stderr
-    assert not (REPO_ROOT / ".run" / "funapp-prod.pid").exists()
+    for args in (
+        ("install-dev",),
+        ("publish",),
+        ("install-prod",),
+        ("install-prod", "1.1.5"),
+    ):
+        subprocess.run([str(script), *args], check=True, timeout=10)
 
-
-def test_service_script_prod_accepts_site_packages_install(tmp_path, monkeypatch):
-    """funapp 真的装进 site-packages 时，prod 必须放行并启动服务入口。"""
-    venv_dir = tmp_path / "venv"
-    subprocess.run(
-        [sys.executable, "-m", "venv", "--without-pip", str(venv_dir)],
-        check=True,
-        timeout=120,
-    )
-    venv_python = venv_dir / "bin" / "python3"
-    if not venv_python.exists():
-        pytest.fail(f"虚拟环境未按预期创建 python3: {sorted(venv_dir.iterdir())}")
-    site_packages = Path(
-        subprocess.run(
-            [
-                str(venv_python),
-                "-c",
-                "import sysconfig;print(sysconfig.get_path('purelib'))",
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=60,
-        ).stdout.strip()
-    )
-    assert site_packages.name == "site-packages"
-    assert site_packages != Path(sysconfig.get_path("purelib"))
-
-    # 装一个无第三方依赖的最小 funapp，只为验证 prod 校验与启动命令本身。
-    pkg = site_packages / "funapp"
-    (pkg / "server").mkdir(parents=True)
-    (pkg / "__init__.py").write_text("")
-    (pkg / "server" / "__init__.py").write_text("")
-    (pkg / "server" / "core.py").write_text(
-        'def run() -> None:\n    print("prod-entry-called")\n'
-    )
-
-    # 脚本的 ROOT_DIR 必须与 venv 分离，否则会先命中「从仓库源码加载」那条校验。
-    script = _copy_setup_script(tmp_path / "repo")
-    monkeypatch.setenv("PATH", f"{venv_dir / 'bin'}:/usr/bin:/bin")
-    monkeypatch.delenv("PYTHONPATH", raising=False)
-
-    result = subprocess.run(
-        [str(script), "run", "prod"],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-    assert result.returncode == 0, result.stderr
-    assert "prod-entry-called" in result.stdout
+    assert trace.read_text().splitlines() == [
+        f"funbuild:{tmp_path}:install",
+        f"funbuild:{tmp_path}:build",
+        "python:-m pip install funapp",
+        "python:-m pip install funapp==1.1.5",
+    ]
 
 
 def test_models_create_tables_and_relations(tmp_path):
