@@ -5,8 +5,18 @@
 
 ## 安装
 
+PyPI 当前发布版本为 `1.1.5`；仓库源码版本为 `1.1.6`，尚未发布。
+
 ```bash
 pip install funapp
+```
+
+若需要使用当前源码，请检出仓库后安装：
+
+```bash
+git clone https://github.com/farfarfun/funapp.git
+cd funapp
+uv sync
 ```
 
 ## 快速开始
