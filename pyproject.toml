@@ -3,7 +3,7 @@ name = "funapp"
 version = "1.1.6"
 description = "基于 NiceGUI 的轻量 Web 服务：健康检查端点、游戏/活动 SQLAlchemy 数据模型，以及一键打开商品详情页等本地快捷入口"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "sqlalchemy>=2.0.0",
     "pymysql>=1.1.0",
@@ -44,7 +44,7 @@ build-backend = "hatchling.build"
 packages = ["src/funapp"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py312"
 
 [dependency-groups]
 dev = [
